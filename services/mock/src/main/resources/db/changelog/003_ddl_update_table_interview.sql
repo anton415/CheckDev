@@ -1,1 +1,0 @@
-alter table interview add column create_date timestamp without time zone default now();

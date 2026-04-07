@@ -1,1 +1,0 @@
-alter table interview add column agreed_wisher_id int DEFAULT 0;

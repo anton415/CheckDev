@@ -1,2 +1,0 @@
-ALTER TABLE IF EXISTS cd_filter
-    ADD COLUMN IF NOT EXISTS filter_profile INT;

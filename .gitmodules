@@ -1,0 +1,28 @@
+[submodule "services/auth"]
+	path = services/auth
+	url = https://github.com/anton415/cd_auth.git
+	branch = main
+[submodule "services/desc"]
+	path = services/desc
+	url = https://github.com/anton415/cd_desc.git
+	branch = main
+[submodule "services/mock"]
+	path = services/mock
+	url = https://github.com/anton415/cd_mock.git
+	branch = main
+[submodule "services/notification"]
+	path = services/notification
+	url = https://github.com/anton415/cd_notification.git
+	branch = main
+[submodule "services/site"]
+	path = services/site
+	url = https://github.com/anton415/cd_site.git
+	branch = main
+[submodule "services/generator"]
+	path = services/generator
+	url = https://github.com/anton415/cd_generator.git
+	branch = main
+[submodule "services/eureka"]
+	path = services/eureka
+	url = https://github.com/anton415/cd_eureka.git
+	branch = main
