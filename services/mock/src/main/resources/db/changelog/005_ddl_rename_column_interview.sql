@@ -1,1 +1,0 @@
-ALTER TABLE interview RENAME COLUMN description TO additional;
