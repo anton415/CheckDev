@@ -32,6 +32,21 @@ git clone --recurse-submodules https://github.com/<your-account>/CheckDev.git
 git submodule update --init --recursive
 ```
 
+#### Локальная PostgreSQL база.
+
+Локальный запуск сервисов ожидает PostgreSQL на `127.0.0.1:5432` и роль
+`postgres` с паролем `password`.
+
+Подготовить локальную базу можно командой:
+
+```bash
+bash create-local-db.sh
+```
+
+Скрипт создаёт или обновляет роль `postgres` и базы:
+`cd_auth`, `cd_desc`, `cd_generator`, `cd_notification`, `mock`.
+`start-local.sh` вызывает этот bootstrap автоматически перед запуском сервисов.
+
 #### Обновление проекта.
 
 Создайте специальную ветку для загрузки в неё изменений из главного

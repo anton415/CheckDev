@@ -9,6 +9,8 @@ LOG_DIR="$RUN_DIR/logs"
 
 mkdir -p "$PID_DIR" "$LOG_DIR"
 
+bash "$ROOT_DIR/create-local-db.sh"
+
 if [[ -n "${JAVA_HOME:-}" ]] && [[ -x "${JAVA_HOME}/bin/java" ]]; then
     JAVA_HOME_21="$JAVA_HOME"
 else
