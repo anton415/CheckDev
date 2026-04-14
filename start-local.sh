@@ -6,12 +6,27 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RUN_DIR="$ROOT_DIR/.local-run"
 PID_DIR="$RUN_DIR/pids"
 LOG_DIR="$RUN_DIR/logs"
+NOTIFICATION_PROFILE="${NOTIFICATION_PROFILE:-develop}"
+NOTIFICATION_TG_USERNAME="${NOTIFICATION_TG_USERNAME:-}"
+NOTIFICATION_TG_TOKEN="${NOTIFICATION_TG_TOKEN:-}"
 
 mkdir -p "$PID_DIR" "$LOG_DIR"
 
 bash "$ROOT_DIR/create-local-db.sh"
 
-if [[ -n "${JAVA_HOME:-}" ]] && [[ -x "${JAVA_HOME}/bin/java" ]]; then
+java_home_is_21() {
+    local java_home="$1"
+    local version_line
+
+    if [[ -z "$java_home" ]] || [[ ! -x "${java_home}/bin/java" ]]; then
+        return 1
+    fi
+    version_line="$("${java_home}/bin/java" -version 2>&1 | head -n 1 || true)"
+    [[ "$version_line" == *'"21.'* ]] || [[ "$version_line" == *' 21'* ]]
+}
+
+JAVA_HOME_21=""
+if java_home_is_21 "${JAVA_HOME:-}"; then
     JAVA_HOME_21="$JAVA_HOME"
 else
     JAVA_HOME_21="$(/usr/libexec/java_home -v 21 2>/dev/null || true)"
@@ -156,12 +171,24 @@ start_service() {
     local codes="$5"
     local eureka_name="$6"
     local launcher_pid app_pid
+    local -a mvn_args=("${MAVEN_RUN_ARGS[@]}")
+    local notification_run_arguments=""
 
     ensure_port_free "$port"
+    if [[ "$name" == "notification" ]]; then
+        notification_run_arguments="--spring.profiles.active=${NOTIFICATION_PROFILE}"
+        if [[ -n "$NOTIFICATION_TG_USERNAME" ]]; then
+            notification_run_arguments+=" --tg.username=${NOTIFICATION_TG_USERNAME}"
+        fi
+        if [[ -n "$NOTIFICATION_TG_TOKEN" ]]; then
+            notification_run_arguments+=" --tg.token=${NOTIFICATION_TG_TOKEN}"
+        fi
+        mvn_args+=("-Dspring-boot.run.arguments=${notification_run_arguments}")
+    fi
     log "Starting ${name}..."
     launcher_pid="$(
         cd "$ROOT_DIR/$module_dir"
-        nohup mvn "${MAVEN_RUN_ARGS[@]}" >"$LOG_DIR/${name}.out" 2>&1 < /dev/null &
+        nohup mvn "${mvn_args[@]}" >"$LOG_DIR/${name}.out" 2>&1 < /dev/null &
         printf '%s' "$!"
     )"
     echo "$launcher_pid" >"$PID_DIR/${name}.launcher.pid"
@@ -184,6 +211,7 @@ done
 cat <<EOF
 [start-local] Stack is ready.
 [start-local] Java: ${JAVA_HOME}
+[start-local] Notification profile: ${NOTIFICATION_PROFILE}
 [start-local] Logs: ${LOG_DIR}
 [start-local] Stop command: bash stop-local.sh
 EOF
