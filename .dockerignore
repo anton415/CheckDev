@@ -1,9 +1,14 @@
 .git
+**/.git
 .idea
 .vscode
 .DS_Store
 
 **/target
 **/.DS_Store
+logs
+**/logs
+.local-run
+tmp
 
 db/shortcut/data
