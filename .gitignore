@@ -78,3 +78,5 @@ build
 .vscode/
 logs/
 .local-run/
+
+db
