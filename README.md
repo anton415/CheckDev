@@ -49,10 +49,11 @@ bash create-local-db.sh
 
 #### Запуск через Docker Compose.
 
-Из корня проекта можно поднять приложение и PostgreSQL в контейнерах:
+Из корня проекта можно поднять полный локальный стек CheckDev в контейнерах:
 
 ```bash
-docker compose up --build
+docker compose build
+docker compose up -d
 ```
 
 Если репозиторий был клонирован без сервисов, сначала инициализируйте submodule:
@@ -63,19 +64,27 @@ git submodule update --init --recursive
 
 `docker compose` поднимет:
 
-- `db` на базе образа `postgres`;
-- `checkdev`, который собирается из корневого `Dockerfile`.
+- `db` на базе образа `postgres:16` c отдельными базами для сервисов;
+- `kafka` для событий `site` и `notification`;
+- `eureka`, `auth`, `desc`, `mock`, `generator`, `notification`, `site`,
+  которые собираются из корневого `Dockerfile` через multi-stage build.
 
 Проверить, что приложение стартовало без ошибок, можно по логам:
 
 ```bash
-docker compose logs -f checkdev
+docker compose logs -f site
 ```
 
 Остановить контейнеры:
 
 ```bash
 docker compose down
+```
+
+Полный сброс контейнеров вместе с volume PostgreSQL:
+
+```bash
+docker compose down -v
 ```
 
 #### Обновление проекта.

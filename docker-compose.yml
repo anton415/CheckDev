@@ -1,26 +1,204 @@
-version: "3.9"
 services:
   db:
-    image: postgres
+    image: postgres:16
     environment:
-      - POSTGRES_PASSWORD=password
-      - POSTGRES_USER=postgres
-      - POSTGRES_DB=checkdev
-      - PGDATA=/var/lib/postgresql/data
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/cd_auth
-      - SPRING_DATASOURCE_USERNAME=compose-postgres
-      - SPRING_DATASOURCE_PASSWORD=compose-postgres
+      POSTGRES_DB: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_USER: postgres
     volumes:
-      - ./db/shortcut/data:/var/lib/postgresql/data
-    restart: always
-  checkdev:
+      - postgres-data:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  kafka:
+    image: bitnamilegacy/kafka:4.0.0-debian-12-r10
+    environment:
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: 0@kafka:9093
+      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CFG_NODE_ID: "0"
+      KAFKA_CFG_PROCESS_ROLES: controller,broker
+      KAFKA_KRAFT_CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+    healthcheck:
+      test: ["CMD-SHELL", "bash -ec 'exec 3<>/dev/tcp/127.0.0.1/9092'"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  eureka:
     build:
       context: .
       dockerfile: Dockerfile
-    environment:
-      - JDBC_URL=jdbc:postgresql://db:5432/checkdev
-      - JDBC_USERNAME=postgres
-      - JDBC_PASSWORD=password
-      - JDBC_DRIVER=org.postgresql.Driver
+      args:
+        MODULE_PATH: services/eureka
+        JAR_GLOB: eureka-*.jar
+    ports:
+      - "9009:9009"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9009/eureka/apps >/dev/null"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  auth:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        MODULE_PATH: services/auth
+        JAR_GLOB: auth-*.jar
     depends_on:
       - db
+      - eureka
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:9009/eureka
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka:9009/eureka
+      SECURITY_OAUTH2_RESOURCE_USERINFOURI: http://auth:9900/user
+      SECURITY_OAUTH2_RESOURCE_USER_INFO_URI: http://auth:9900/user
+      SPRING_DATASOURCE_PASSWORD: password
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/cd_auth
+      SPRING_DATASOURCE_USERNAME: postgres
+      WAIT_FOR_HTTP: http://eureka:9009/eureka/apps
+      WAIT_FOR_TCP: db:5432
+    ports:
+      - "9900:9900"
+
+  desc:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        MODULE_PATH: services/desc
+        JAR_GLOB: desc-*.jar
+    depends_on:
+      - db
+      - eureka
+      - auth
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:9009/eureka
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka:9009/eureka
+      SECURITY_OAUTH2_RESOURCE_USERINFOURI: http://auth:9900/user
+      SECURITY_OAUTH2_RESOURCE_USER_INFO_URI: http://auth:9900/user
+      SPRING_DATASOURCE_PASSWORD: password
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/cd_desc
+      SPRING_DATASOURCE_USERNAME: postgres
+      WAIT_FOR_HTTP: http://eureka:9009/eureka/apps
+      WAIT_FOR_TCP: db:5432
+    ports:
+      - "9902:9902"
+
+  mock:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        MODULE_PATH: services/mock
+        JAR_GLOB: mock-*.jar
+    depends_on:
+      - db
+      - eureka
+      - auth
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:9009/eureka
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka:9009/eureka
+      SECURITY_OAUTH2_RESOURCE_USERINFOURI: http://auth:9900/user
+      SECURITY_OAUTH2_RESOURCE_USER_INFO_URI: http://auth:9900/user
+      SPRING_DATASOURCE_PASSWORD: password
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/mock
+      SPRING_DATASOURCE_USERNAME: postgres
+      WAIT_FOR_HTTP: http://eureka:9009/eureka/apps
+      WAIT_FOR_TCP: db:5432
+    ports:
+      - "9912:9912"
+
+  generator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        MODULE_PATH: services/generator
+        JAR_GLOB: generator-*.jar
+    depends_on:
+      - db
+      - eureka
+      - auth
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:9009/eureka
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka:9009/eureka
+      SECURITY_OAUTH2_RESOURCE_USERINFOURI: http://auth:9900/user
+      SECURITY_OAUTH2_RESOURCE_USER_INFO_URI: http://auth:9900/user
+      SPRING_DATASOURCE_PASSWORD: password
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/cd_generator
+      SPRING_DATASOURCE_USERNAME: postgres
+      WAIT_FOR_HTTP: http://eureka:9009/eureka/apps
+      WAIT_FOR_TCP: db:5432
+    ports:
+      - "9903:9903"
+
+  notification:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        MODULE_PATH: services/notification
+        JAR_GLOB: notification-*.jar
+    depends_on:
+      - db
+      - eureka
+      - auth
+      - kafka
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:9009/eureka
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka:9009/eureka
+      SECURITY_OAUTH2_RESOURCE_USERINFOURI: http://auth:9900/user
+      SECURITY_OAUTH2_RESOURCE_USER_INFO_URI: http://auth:9900/user
+      SERVER_AUTH: http://auth:9900
+      SERVER_SITE_URLLOGIN: http://localhost:8080/login
+      SERVER_SITE_URL_LOGIN: http://localhost:8080/login
+      SPRING_DATASOURCE_PASSWORD: password
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/cd_notification
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      WAIT_FOR_HTTP: http://eureka:9009/eureka/apps
+      WAIT_FOR_TCP: db:5432,kafka:9092
+    ports:
+      - "9920:9920"
+
+  site:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        MODULE_PATH: services/site
+        JAR_GLOB: site-*.jar
+    depends_on:
+      - eureka
+      - auth
+      - desc
+      - mock
+      - generator
+      - notification
+      - kafka
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:9009/eureka
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka:9009/eureka
+      SERVICE_URLSITE: http://localhost:8080/
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      WAIT_FOR_EUREKA_APPS: AUTH,DESC,MOCK,GENERATOR,NOTIFICATION
+      WAIT_FOR_EUREKA_URL: http://eureka:9009/eureka/apps
+      WAIT_FOR_HTTP: http://eureka:9009/eureka/apps
+      WAIT_FOR_TCP: kafka:9092
+    ports:
+      - "8080:8080"
+
+volumes:
+  postgres-data:
