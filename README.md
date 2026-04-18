@@ -47,6 +47,37 @@ bash create-local-db.sh
 `cd_auth`, `cd_desc`, `cd_generator`, `cd_notification`, `mock`.
 `start-local.sh` вызывает этот bootstrap автоматически перед запуском сервисов.
 
+#### Запуск через Docker Compose.
+
+Из корня проекта можно поднять приложение и PostgreSQL в контейнерах:
+
+```bash
+docker compose up --build
+```
+
+Если репозиторий был клонирован без сервисов, сначала инициализируйте submodule:
+
+```bash
+git submodule update --init --recursive
+```
+
+`docker compose` поднимет:
+
+- `db` на базе образа `postgres`;
+- `checkdev`, который собирается из корневого `Dockerfile`.
+
+Проверить, что приложение стартовало без ошибок, можно по логам:
+
+```bash
+docker compose logs -f checkdev
+```
+
+Остановить контейнеры:
+
+```bash
+docker compose down
+```
+
 #### Обновление проекта.
 
 Создайте специальную ветку для загрузки в неё изменений из главного
